@@ -1,0 +1,5 @@
+com.ge.predix.solsvc.websocket.handler
+com.ge.predix.solsvc.websocket.server
+com.ge.predix.solsvc.websocket.server.common
+com.ge.predix.solsvc.websocket.server.config
+com.ge.predix.solsvc.websocket.server.endpoint
