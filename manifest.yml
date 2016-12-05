@@ -1,0 +1,15 @@
+applications:
+- name: template-websocket-server
+  instances: 1
+  memory: 512M
+  timeout: 180
+  path: target/predix-websocket-server-2.0.6.jar
+#  services:
+#    - ${rabbitMQService}
+env:
+  fieldChangedEvent_ErrorQueue: FieldChangedEventErrorQueue
+  fieldChangedEvent_MainQueue: FieldChangedEventMainQueue
+  #logging - see application-cloud.properties
+  logging_level_root: INFO
+  logging_level_org_springframework: INFO
+  logging_level_com_ge_predix_solsvc: DEBUG
