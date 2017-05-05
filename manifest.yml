@@ -3,12 +3,10 @@ applications:
   instances: 1
   memory: 512M
   timeout: 180
-  path: target/predix-websocket-server-2.1.4.jar
+  path: target/predix-websocket-server-2.1.13.jar
 #  services:
 #    - ${rabbitMQService}
 env:
-  fieldChangedEvent_ErrorQueue: FieldChangedEventErrorQueue
-  fieldChangedEvent_MainQueue: FieldChangedEventMainQueue
   #logging - see application-cloud.properties
   logging_level_root: INFO
   logging_level_org_springframework: INFO

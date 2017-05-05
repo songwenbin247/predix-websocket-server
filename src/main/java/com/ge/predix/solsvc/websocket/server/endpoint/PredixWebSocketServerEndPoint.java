@@ -2,6 +2,7 @@ package com.ge.predix.solsvc.websocket.server.endpoint;
 
 import java.io.IOException;
 import java.util.LinkedList;
+import java.util.List;
 
 import javax.websocket.CloseReason;
 import javax.websocket.EndpointConfig;
@@ -16,9 +17,9 @@ import javax.websocket.server.ServerEndpoint;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
+import com.ge.predix.entity.timeseries.datapoints.ingestionrequest.Body;
+import com.ge.predix.entity.timeseries.datapoints.ingestionrequest.DatapointsIngestion;
+import com.ge.predix.solsvc.ext.util.JsonMapper;
 
 /**
  * 
@@ -30,6 +31,8 @@ public class PredixWebSocketServerEndPoint {
 		
 	private static final LinkedList<Session> clients = new LinkedList<Session>();
 	
+	private String nodeId;
+	
 	/**
 	 * @param nodeId - nodeId for the session
 	 * @param session - session object
@@ -37,6 +40,7 @@ public class PredixWebSocketServerEndPoint {
 	 */
 	@OnOpen
 	public void onOpen(@PathParam(value = "nodeId") String nodeId, final Session session, EndpointConfig ec) {
+		this.nodeId = nodeId;
 		clients.add(session);
 		logger.info("Server: opened... for Node Id : " + nodeId + " : " + session.getId()); //$NON-NLS-1$ //$NON-NLS-2$
 	}
@@ -48,28 +52,30 @@ public class PredixWebSocketServerEndPoint {
 	 */
 	@SuppressWarnings("nls")
     @OnMessage
-	public void onMessage(@PathParam(value = "nodeId") String nodeId, String message, Session session) {
+	public void onMessage(String message, Session session) {
 		logger.info("nodeId=" + nodeId + " Websocket Message : " + message);
 		try {
 			if ("messages".equalsIgnoreCase(nodeId)) { //$NON-NLS-1$
-				JsonParser parser = new JsonParser();
-				JsonObject o = (JsonObject) parser.parse(message);
-				JsonArray nodes = o.getAsJsonArray("body"); //$NON-NLS-1$
+				JsonMapper mapper = new JsonMapper();
+				mapper.init();
+				DatapointsIngestion dps = mapper.fromJson(message, DatapointsIngestion.class);
+				List<Body> nodes = dps.getBody(); //$NON-NLS-1$
 				for (Session s : clients) {
 					if (!"messages".equals(s.getPathParameters().get("nodeId"))) { //$NON-NLS-1$ //$NON-NLS-2$
 						String pNodeName = s.getPathParameters().get("nodeId"); //$NON-NLS-1$
-						JsonObject node = findJsonObjectByName(nodes, pNodeName);
+						Body node = findJsonObjectByName(nodes, pNodeName);
 						if (node != null) {
-							s.getBasicRemote().sendText(node.toString());
+							logger.info("Sending to : "+s.getPathParameters().get("nodeId"));
+							s.getBasicRemote().sendText(mapper.toJson(node));
 						}
 					}
 				}
 				
-				if (o.has("messageId")) {
-					String response = "{\"messageId\": " + o.get("messageId") + ",\"statusCode\": 202}"; //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+				if (dps.getMessageId() != null) {
+					String response = "{\"messageId\": \"" + dps.getMessageId() + "\",\"statusCode\": 202}"; //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
 					session.getBasicRemote().sendText(response);
 				}else {
-					String response = "{\"messageId\": " + o.get("messageId") + ",\"statusCode\": 500}"; //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+					String response = "{\"messageId\": \"No MSGID Found\",\"statusCode\": 500}"; //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
 					session.getBasicRemote().sendText(response);
 				}
 				
@@ -89,11 +95,15 @@ public class PredixWebSocketServerEndPoint {
 		}
 	}
 
+	@OnMessage
+	public void onMessage(byte[] message, Session session) {
+		 
+	 }
 	
-	private JsonObject findJsonObjectByName(JsonArray nodes, String pNodeName) {
+	private Body findJsonObjectByName(List<Body> nodes, String pNodeName) {
 		for (int i = 0; i < nodes.size(); i++) {
-			JsonObject node = (JsonObject) nodes.get(i);
-			String nodeName = node.get("name").getAsString(); //$NON-NLS-1$
+			Body node = nodes.get(i);
+			String nodeName = node.getName(); //$NON-NLS-1$
 			if (pNodeName.equalsIgnoreCase(nodeName.trim())) {
 				return node;
 			}
